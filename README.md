@@ -1,12 +1,11 @@
-# Resturant_Management_System
-I developed a project using java in object oriented programming
-
-
 
 package restaurantmanagementsystem;
 
-import java.util.Scanner;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class RestaurantManagementSystem {
 
@@ -19,13 +18,13 @@ public class RestaurantManagementSystem {
             System.out.println("Restaurant");
             System.out.println("1) Admin");
             System.out.println("2) Customer");
+            System.out.println("3) Exit");
             System.out.println("Enter a choice:");
             choice = scan.nextInt();
 
             switch (choice) {
                 case 1 -> {
                     Admin a1 = new Admin();
-
                     if (a1.LogIn()) {
                         m.adminMenu();
                     }
@@ -33,10 +32,13 @@ public class RestaurantManagementSystem {
                 case 2 -> {
                     m.customerMenu();
                 }
+                case 3 -> {
+                    System.out.println("Fuckkkk Offff!");
+                }
                 default -> System.out.println("Invalid choice!");
             }
 
-        } while (true);
+        } while (choice != 3);
     }
 }
 
@@ -44,7 +46,6 @@ class Admin {
 
     private String username;
     private String password;
-
     Scanner sc = new Scanner(System.in);
 
     public Admin() {
@@ -76,15 +77,12 @@ class Admin {
 }
 
 class Menu {
-    private String name;
-    private double price;
-
+    private ArrayList<Cuisine> item = new ArrayList<>();
+    private ArrayList<Cuisine> order = new ArrayList<>();
+    private final File menuFile = new File("C:\\Users\\Administrator\\Documents\\RestaurantManagementSystem\\menu.txt");
+    private final File cartFile = new File("C:\\Users\\Administrator\\Documents\\RestaurantManagementSystem\\cart.txt");
     Scanner sc = new Scanner(System.in);
-    ArrayList<Cuisine> item = new ArrayList<>();
-    ArrayList<Cuisine> order = new ArrayList<>();
 
-    
-    
     public void adminMenu() {
         boolean exit = false;
         int choice;
@@ -109,45 +107,72 @@ class Menu {
         } while (!exit);
     }
 
-    
-    
     void addCuisine() {
-        
         System.out.print("Enter the name of the cuisine: ");
-        name = sc.next();
+        String name = sc.next();
         System.out.print("Enter the price of the cuisine: ");
-        price = sc.nextDouble();
-
+        String price = sc.next();
         item.add(new Cuisine(name, price));
+        saveMenuToFile(item);
     }
 
-    
-    
+    void saveMenuToFile(ArrayList<Cuisine> item) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(menuFile))) {
+            for (Cuisine x : item) {//for(int i=0 ; i<= item.lenght()     ; i++)
+                writer.write(x.getName() + "," + x.getPrice());
+                writer.newLine();
+            }
+            System.out.println("Menu saved to file successfully.");
+        } catch (IOException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    ArrayList<Cuisine> readMenuFromFile() {
+        ArrayList<Cuisine> menuList = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(menuFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 2) {
+                    String name = parts[0];
+                    String price = parts[1];
+                    menuList.add(new Cuisine(name, price));
+                }
+            }
+            System.out.println("Menu loaded from file successfully.");
+        } catch (IOException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return menuList;
+    }
+
     void viewMenu() {
-        if (item.isEmpty()) {
+        ArrayList<Cuisine> menuList = readMenuFromFile();
+        if (menuList.isEmpty()) {
             System.out.println("No Cuisines Available...");
         } else {
-            for (Cuisine cuisine : item) {
+            for (Cuisine cuisine : menuList) {
                 System.out.println(cuisine);
             }
         }
     }
-    
-    
 
     void updatePrice() {
-        if (item.isEmpty()) {
+        ArrayList<Cuisine> menuList = readMenuFromFile();
+        if (menuList.isEmpty()) {
             System.out.println("No Cuisines Available... To add Cuisine choose option 1...");
         } else {
             System.out.print("Enter cuisine name whose price you want to update: ");
             String updatedCuisine = sc.next();
             boolean found = false;
 
-            for (Cuisine cuisine : item) {
+            for (Cuisine cuisine : menuList) {
                 if (cuisine.getName().equalsIgnoreCase(updatedCuisine)) {
                     System.out.print("Enter new price: ");
-                    double updatedPrice = sc.nextDouble();
+                    String updatedPrice = sc.next();
                     cuisine.setPrice(updatedPrice);
+                    saveMenuToFile(menuList);
                     System.out.println("Cuisine's updated price: " + cuisine);
                     found = true;
                     break;
@@ -160,20 +185,19 @@ class Menu {
         }
     }
 
-    
-    
     void deleteCuisine() {
-        
-        if (item.isEmpty()) {
+        ArrayList<Cuisine> menuList = readMenuFromFile();
+        if (menuList.isEmpty()) {
             System.out.println("No Cuisines Available... To add Cuisine choose option 1...");
         } else {
             System.out.print("Enter cuisine name you want to delete: ");
             String cuisineToDelete = sc.next();
             boolean found = false;
 
-            for (Cuisine cuisine : item) {
+            for (Cuisine cuisine : menuList) {
                 if (cuisine.getName().equalsIgnoreCase(cuisineToDelete)) {
-                    item.remove(cuisine);
+                    menuList.remove(cuisine);
+                    saveMenuToFile(menuList);
                     System.out.println("Cuisine deleted successfully.");
                     found = true;
                     break;
@@ -186,10 +210,7 @@ class Menu {
         }
     }
 
-    
-    
     public void customerMenu() {
-        
         boolean exit = false;
         int choice;
         do {
@@ -209,15 +230,12 @@ class Menu {
         } while (!exit);
     }
 
-    
-    
     void addCart() {
-        
-        boolean exit = false;
-        double bill = 0;
-        if (item.isEmpty()) {
+        ArrayList<Cuisine> menuList = readMenuFromFile();
+        if (menuList.isEmpty()) {
             System.out.println("No Cuisines Available... To add Cuisine choose option 1...");
         } else {
+            boolean exit = false;
             do {
                 System.out.println("Enter Cuisine to order...\nEnter \"Exit\" when order is complete...");
                 String chosenCuisine = sc.next();
@@ -225,10 +243,10 @@ class Menu {
                     exit = true;
                 } else {
                     boolean found = false;
-                    for (Cuisine x : item) {
+                    for (Cuisine x : menuList) {
                         if (x.getName().equalsIgnoreCase(chosenCuisine)) {
                             order.add(new Cuisine(x.getName(), x.getPrice()));
-                            bill += x.getPrice();
+                            saveCuisineToCart(order);
                             found = true;
                             break;
                         }
@@ -238,9 +256,39 @@ class Menu {
                     }
                 }
             } while (!exit);
-            System.out.println("Items added to cart: " + order);
-            System.out.println("Total Bill: " + bill);
+            System.out.println("Items added to cart: " + readOrderFromCart());
         }
+    }
+
+    void saveCuisineToCart(ArrayList<Cuisine> order) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(cartFile))) {
+            for (Cuisine x : order) {
+                writer.write(x.getName() + "," + x.getPrice());
+                writer.newLine();
+            }
+            System.out.println("Cart saved to file successfully.");
+        } catch (IOException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    ArrayList<Cuisine> readOrderFromCart() {
+        ArrayList<Cuisine> orderList = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(cartFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 2) {
+                    String name = parts[0];
+                    String price = parts[1];
+                    orderList.add(new Cuisine(name, price));
+                }
+            }
+            System.out.println("Cart loaded from file successfully.");
+        } catch (IOException ex) {
+            Logger.getLogger(Menu.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return orderList;
     }
 }
 
@@ -248,10 +296,10 @@ class Menu {
 
 class Cuisine {
 
-    private String name;
-    private double price;
+    private String name , price;
+  
 
-    public Cuisine(String name, double price) {
+    public Cuisine(String name, String price) {
         this.name = name;
         this.price = price;
     }
@@ -262,12 +310,12 @@ class Cuisine {
     }
 
     
-    public double getPrice() {
+    public String getPrice() {
         return price;
     }
 
     
-    public void setPrice(double price) {
+    public void setPrice(String price) {
         this.price = price;
     }
 
